@@ -12,7 +12,7 @@ bun run src/cli.ts detail 49954836
 ## Development
 
 ```bash
-bun test          # 46 tests, fully offline
+bun test          # 50 tests, fully offline
 bunx tsc --noEmit
 ```
 

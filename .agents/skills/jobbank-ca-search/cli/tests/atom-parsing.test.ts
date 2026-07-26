@@ -4,6 +4,7 @@ import {
   decodeXmlEntities,
   extractPostingId,
   feedFetch,
+  isAtomFeed,
   parseAtomEntries,
   parseAtomSummary,
 } from "../src/helpers"
@@ -134,5 +135,32 @@ describe("feedFetch", () => {
   test("throws on a non-OK response", async () => {
     globalThis.fetch = (async () => new Response("nope", { status: 404 })) as unknown as typeof fetch
     await expect(feedFetch({ searchstring: "analyst" })).rejects.toThrow(/404/)
+  })
+
+  test("rejects the maintenance-window outage page instead of reporting zero results", async () => {
+    // Job Bank answers its nightly window with HTTP 200 + an HTML notice.
+    globalThis.fetch = (async () =>
+      new Response(
+        "<html><body><p>Outage / Interruption des services</p><p>Job Bank\u2019s website will be " +
+          "unavailable due to system maintenance from 12:00 a.m. to 7:00 a.m., Eastern Time (ET).</p></body></html>"
+      )) as unknown as typeof fetch
+
+    await expect(feedFetch({ searchstring: "analyst" })).rejects.toThrow(/maintenance window/i)
+  })
+
+  test("rejects any other non-Atom body", async () => {
+    globalThis.fetch = (async () => new Response("<html><body>login</body></html>")) as unknown as typeof fetch
+    await expect(feedFetch({ searchstring: "analyst" })).rejects.toThrow(/non-Atom response/i)
+  })
+})
+
+describe("isAtomFeed", () => {
+  test("accepts an Atom document and rejects HTML", () => {
+    expect(isAtomFeed(SAMPLE_FEED)).toBe(true)
+    expect(isAtomFeed("<html><body>nope</body></html>")).toBe(false)
+  })
+
+  test("does not mistake the word feed in HTML body copy for an Atom root", () => {
+    expect(isAtomFeed("<html><body>Subscribe to our feed today</body></html>")).toBe(false)
   })
 })

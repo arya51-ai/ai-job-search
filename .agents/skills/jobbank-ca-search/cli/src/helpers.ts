@@ -177,7 +177,31 @@ export async function feedFetch(params: Record<string, string | string[]>): Prom
     }
     throw new Error(`Failed to fetch Atom feed: ${response.status} ${response.statusText}`)
   }
-  return parseAtomEntries(await response.text())
+
+  const body = await response.text()
+
+  // Job Bank answers its nightly maintenance window (12:00–7:00 a.m. ET) with
+  // HTTP 200 and an HTML outage notice instead of the feed. Parsing that as
+  // Atom yields zero entries, which is indistinguishable from "nothing
+  // matched" — so detect it and fail loudly instead.
+  if (!isAtomFeed(body)) {
+    if (/outage|interruption des services|unavailable due to system maintenance|maintenance du syst/i.test(body)) {
+      throw new Error(
+        "Job Bank is in its scheduled maintenance window (typically 12:00–7:00 a.m. Eastern) and is serving an " +
+          "outage notice instead of the feed. Retry after 7:00 a.m. ET."
+      )
+    }
+    throw new Error(
+      "Job Bank returned a non-Atom response. The portal may be down or may have changed its feed endpoint."
+    )
+  }
+
+  return parseAtomEntries(body)
+}
+
+/** True when the body is an Atom document rather than an HTML error/outage page. */
+export function isAtomFeed(body: string): boolean {
+  return /<feed[\s>]/i.test(body.slice(0, 4000))
 }
 
 /**

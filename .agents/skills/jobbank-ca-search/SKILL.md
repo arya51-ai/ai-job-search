@@ -100,7 +100,14 @@ These are verified behaviours, not guesses. Read them before changing the CLI.
    carries `property="name"` and `property="areaServed"`, so employer and
    location are read from scoped selectors, not the first match on the page.
 
-6. **Coverage is skewed.** Job Bank is strongest on trades, healthcare, service,
+6. **Nightly maintenance window.** Job Bank goes down for system maintenance
+   roughly 12:00–7:00 a.m. Eastern and answers with **HTTP 200 plus an HTML
+   outage notice**, not an error status. Parsed as Atom that yields zero
+   entries, which looks exactly like "nothing matched". The CLI detects a
+   non-Atom body and exits with code `PORTAL_UNAVAILABLE` instead. If you see
+   that code, retry after 7:00 a.m. ET — it is not a bug and not an empty market.
+
+7. **Coverage is skewed.** Job Bank is strongest on trades, healthcare, service,
    administrative, and entry-to-mid roles. Senior professional and tech postings
    are better covered by `linkedin-search`. Some employers never post to Job Bank
    at all — notably federal agencies and Crown corporations that run their own
@@ -161,7 +168,8 @@ bun run .agents/skills/jobbank-ca-search/cli/src/cli.ts detail 49954836 --format
 
 Errors go to stderr as `{"error": "...", "code": "..."}` with a non-zero exit.
 Codes: `MISSING_REQUIRED`, `INVALID_ARGUMENT`, `NOT_FOUND`, `PARSE_ERROR`,
-`API_ERROR`.
+`PORTAL_UNAVAILABLE` (outage or maintenance window — skip the portal this run
+and retry later), `API_ERROR`.
 
 ## Personal use only
 
@@ -174,7 +182,7 @@ own job search. Do not run it as a bulk scraper.
 ```bash
 cd .agents/skills/jobbank-ca-search/cli
 bun install
-bun test          # 46 tests, no network required
+bun test          # 50 tests, no network required
 bunx tsc --noEmit
 ```
 

@@ -163,7 +163,13 @@ export const search = defineCommand({
         outputPlain(results)
       }
     } catch (err) {
-      writeError(err instanceof Error ? err.message : String(err), "API_ERROR")
+      const message = err instanceof Error ? err.message : String(err)
+      // Distinct code so /scrape can skip the portal for this run rather than
+      // treating an outage as a genuine zero-result search.
+      const code = /maintenance window|non-Atom response|bot protection/i.test(message)
+        ? "PORTAL_UNAVAILABLE"
+        : "API_ERROR"
+      writeError(message, code)
       process.exit(1)
     }
   },
