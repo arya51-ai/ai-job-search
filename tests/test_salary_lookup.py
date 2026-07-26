@@ -100,7 +100,7 @@ class TestMatchScoreExactMatch(unittest.TestCase):
         self.assertEqual(match_score("NOVO NORDISK", "Novo Nordisk"), 100)
 
     def test_exact_match_after_suffix_stripping(self):
-        self.assertEqual(match_score("Mærsk", "Mærsk A/S"), 100)
+        self.assertEqual(match_score("Bombardier", "Bombardier Inc."), 100)
 
 
 class TestMatchScoreSubstring(unittest.TestCase):
@@ -124,15 +124,15 @@ class TestMatchScoreShortQuery(unittest.TestCase):
 
 
 class TestMatchScoreAnglicize(unittest.TestCase):
-    def test_oe_variant_matches_o_with_slash(self):
-        score = match_score("Maersk", "Mærsk A/S")
+    def test_unaccented_variant_matches_accented(self):
+        score = match_score("Telesysteme", "Télésystème Ltée")
         self.assertGreater(score, 0)
 
     def test_aa_variant_matches_aa(self):
         self.assertEqual(match_score("Aarsleff", "Aarsleff"), 100)
 
-    def test_danish_characters_roundtrip(self):
-        score = match_score("Maersk", "Mærsk A/S")
+    def test_accented_characters_roundtrip(self):
+        score = match_score("Quebecor", "Québecor Inc.")
         self.assertGreater(score, 0)
 
 
@@ -327,15 +327,15 @@ class ValidateFlagTests(unittest.TestCase):
 
 class UtilityTests(unittest.TestCase):
     def test_normalize_strips_suffix_and_noise(self):
-        self.assertEqual(normalize("Novo Nordisk A/S"), "novonordisk")
-        self.assertEqual(normalize("Ørsted (VG) Holding"), "ørsted")
-        self.assertEqual(normalize("Chr. Hansen, Denmark Division"), "chrhansen")
-        self.assertEqual(normalize("Simple Corp ApS"), "simplecorp")
+        self.assertEqual(normalize("Shopify Inc."), "shopify")
+        self.assertEqual(normalize("Bombardier (VG) Holding"), "bombardier")
+        self.assertEqual(normalize("Royal Bank, Canada Division"), "royalbank")
+        self.assertEqual(normalize("Simple Solutions Ltd"), "simplesolutions")
 
-    def test_anglicize_replaces_danish_chars(self):
-        self.assertEqual(anglicize("ørsted"), "orsted")
-        self.assertEqual(anglicize("mærsk"), "maersk")
-        self.assertEqual(anglicize("ålborg"), "aalborg")
+    def test_anglicize_replaces_accented_chars(self):
+        self.assertEqual(anglicize("Montréal"), "montreal")
+        self.assertEqual(anglicize("Québec"), "quebec")
+        self.assertEqual(anglicize("Bélanger Ltée"), "belanger ltee")
 
     def test_extract_core_words(self):
         self.assertEqual(extract_core_words("Novo Nordisk A/S"), ["novo", "nordisk"])
@@ -345,15 +345,15 @@ class UtilityTests(unittest.TestCase):
 
 class MatchScoreTests(unittest.TestCase):
     def test_exact_match_score(self):
-        self.assertEqual(match_score("Novo Nordisk", "Novo Nordisk"), 100)
-        self.assertEqual(match_score("novo nordisk", "Novo Nordisk A/S"), 100)
+        self.assertEqual(match_score("Royal Bank", "Royal Bank"), 100)
+        self.assertEqual(match_score("royal bank", "Royal Bank Ltd"), 100)
 
     def test_partial_match_score(self):
         self.assertGreater(match_score("Novo", "Novo Nordisk A/S"), 80)
         self.assertEqual(match_score("Novo Nordisk", "Novo"), 75)
 
     def test_anglicized_match_score(self):
-        self.assertEqual(match_score("Orsted", "Ørsted A/S"), 85)
+        self.assertEqual(match_score("Quebecor", "Québecor Inc."), 85)
 
     def test_overlap_match_score(self):
         # Overlap of multiple words
@@ -440,9 +440,9 @@ class TestSearchCompanyCityFilter(unittest.TestCase):
         results = search_company(data, "Novo Nordisk", city="københavn")
         self.assertEqual(len(results), 1)
 
-    def test_anglicized_city_matches_danish_city(self):
-        data = _make_data(_entry("Novo Nordisk", "København"))
-        results = search_company(data, "Novo Nordisk", city="kobenhavn")
+    def test_anglicized_city_matches_accented_city(self):
+        data = _make_data(_entry("Quebecor", "Montréal"))
+        results = search_company(data, "Quebecor", city="montreal")
         self.assertEqual(len(results), 1)
 
 

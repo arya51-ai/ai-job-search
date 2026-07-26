@@ -39,7 +39,7 @@ Sixty-nine tailored applications, twenty first interviews, and one signed contra
 
 ## What this is
 
-A structured workflow that turns Claude Code into a full-stack job application assistant. The core workflow (self-profiling, fit evaluation, and the drafter-reviewer application pipeline) is **language- and country-agnostic**. The job portal search skills are built for the Danish market (Jobindex, Jobnet, Akademikernes Jobbank, etc.), but the pattern is designed to be swapped for your local job boards.
+A structured workflow that turns Claude Code into a full-stack job application assistant. The core workflow (self-profiling, fit evaluation, and the drafter-reviewer application pipeline) is **language- and country-agnostic**. Upstream ships Danish portal skills; **this fork targets Canada** — see [Canadian fork](#canadian-fork) below.
 
 ```
 /setup          /scrape              /apply <url>
@@ -58,6 +58,46 @@ files ready    with fit ratings     (LaTeX, tailored)
 ```
 
 The framework encodes career guidance best practices, including structured evaluation criteria, forward-looking cover letter framing, and optional salary benchmarking.
+
+## Canadian fork
+
+This fork retargets the portal layer from Denmark to Canada. The core workflow
+(`/setup`, `/rank`, `/apply`, `/interview`, `/outcome`) is untouched.
+
+### Active portals
+
+| Skill | Source | Coverage |
+|---|---|---|
+| `jobbank-ca-search` | [Job Bank](https://www.jobbank.gc.ca) (Government of Canada) | National; strongest on trades, healthcare, service, admin, entry-to-mid roles |
+| `linkedin-search` | LinkedIn public job board | Any market; pass `--location "Toronto, Ontario, Canada"` |
+
+The five Danish portals (`jobbank-search`, `jobindex-search`, `jobnet-search`,
+`jobdanmark-search`, `freehire-search`) are still installed but carry
+`enabled: false`, so `/scrape` skips them. They are left in place rather than
+deleted so upstream merges stay clean — flip `enabled` back to `true` in the
+skill's frontmatter if you ever want them.
+
+> Note: upstream's `jobbank-search` is **Akademikernes Jobbank** (jobbank.dk,
+> Denmark). It is unrelated to Canada's Job Bank. This fork's Canadian skill is
+> `jobbank-ca-search`.
+
+### Portals deliberately not included
+
+- **Indeed Canada** — returns HTTP 403 to non-browser clients; bot protection makes a CLI unreliable.
+- **Talent.com** — reachable, but its job cards are keyed by build-hashed CSS module class names (`JobCard_card__TSiPB`) that change on every deploy.
+
+### Other changes
+
+- `salary_lookup.py` normalization now folds French accents and strips Canadian legal suffixes (Inc., Ltd., Ltée, Corp., ULC, LLP, Cie) instead of Danish ones (A/S, ApS).
+- `tests/test_salary_lookup.py` updated to match.
+
+### Verification
+
+```bash
+python3 tools/lint_skills.py && python3 tools/security_guards.py
+python3 -m unittest discover -s tests -t .
+(cd .agents/skills/jobbank-ca-search/cli && bun install && bun test && bunx tsc --noEmit)
+```
 
 ## Prerequisites
 

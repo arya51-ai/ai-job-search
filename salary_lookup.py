@@ -12,7 +12,7 @@ instructions on the expected format and how to convert from Excel.
 
 Usage:
     python salary_lookup.py "Company Name"
-    python salary_lookup.py "Company Name" --city "København"
+    python salary_lookup.py "Company Name" --city "Toronto"
     python salary_lookup.py "Company Name" --json
     python salary_lookup.py --list-all
 """
@@ -26,20 +26,28 @@ from pathlib import Path
 
 DATA_FILE = Path(__file__).parent / "salary_data.json"
 
-# Common Danish <-> anglicized spelling variants
+# Accent folding. Canadian company names routinely carry French accents
+# (Québec, Montréal, Ltée), and datasets disagree on whether they keep them.
 SPELLING_VARIANTS = {
-    "ø": "o", "æ": "ae", "å": "aa",
-    "ö": "o", "ä": "ae", "ü": "u",
+    "é": "e", "è": "e", "ê": "e", "ë": "e",
+    "à": "a", "â": "a", "ä": "a",
+    "î": "i", "ï": "i",
+    "ô": "o", "ö": "o",
+    "ù": "u", "û": "u", "ü": "u",
+    "ç": "c",
 }
 
 # Legal suffixes and noise to strip when matching company names
 STRIP_PATTERNS = [
-    r"\ba/s\b", r"\baps\b", r"\bi/s\b", r"\bp/s\b", r"\bk/s\b",
-    r"\bivs\b", r"\bamba\b", r"\ba\.m\.b\.a\.\b",
-    r"\(vg\)", r"\(.*?\)",  # (VG) and other parentheticals
-    r"\bdanmark\b", r"\bdenmark\b", r"\bscandinavia\b", r"\bnordic\b",
-    r"\bgroup\b", r"\bholding\b",
-    r",\s*.*$",  # everything after comma (sub-entities)
+    # Canadian legal suffixes (English and French)
+    r"\binc\.?\b", r"\bltd\.?\b", r"\blimited\b", r"\blt[ée]e\.?\b",
+    r"\bcorp\.?\b", r"\bcorporation\b", r"\bulc\b", r"\bllp\b",
+    r"\bllc\b", r"\blp\b", r"\bco\.?\b", r"\bcie\.?\b", r"\benr\.?\b",
+    r"\(.*?\)",  # parentheticals
+    # Regional qualifiers that vary between datasets
+    r"\bcanada\b", r"\bcanadian\b", r"\bnorth america\b", r"\bnorthamerica\b",
+    r"\bgroup\b", r"\bholdings?\b",
+    r",\s*.*$",  # everything after a comma (sub-entities)
 ]
 
 
@@ -166,15 +174,15 @@ def normalize(s):
     s = s.lower().strip()
     for pat in STRIP_PATTERNS:
         s = re.sub(pat, "", s)
-    s = re.sub(r"[^a-zæøåöäü0-9]", "", s)
+    s = re.sub(r"[^a-zàâäçéèêëîïôöùûü0-9]", "", s)
     return s.strip()
 
 
 def anglicize(s):
-    """Convert Danish/Nordic characters to anglicized equivalents."""
+    """Fold French accents to their unaccented equivalents."""
     s = s.lower()
-    for danish, english in SPELLING_VARIANTS.items():
-        s = s.replace(danish, english)
+    for accented, plain in SPELLING_VARIANTS.items():
+        s = s.replace(accented, plain)
     return s
 
 
@@ -183,7 +191,7 @@ def extract_core_words(s):
     s = s.lower()
     for pat in STRIP_PATTERNS:
         s = re.sub(pat, "", s)
-    words = re.findall(r"[a-zæøåöäü0-9]+", s)
+    words = re.findall(r"[a-zàâäçéèêëîïôöùûü0-9]+", s)
     return [w for w in words if len(w) > 1]
 
 
@@ -413,7 +421,7 @@ def main():
         if args.city:
             print(f"  (filtered by city: {args.city})")
         print("\nTry a shorter or different name. Company names in the dataset")
-        print("may include legal suffixes like 'A/S' or 'ApS'.")
+        print("may include legal suffixes like 'Inc.', 'Ltd.' or 'Ltée'.")
         sys.exit(1)
 
     if args.json:
